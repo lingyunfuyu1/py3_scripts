@@ -6,6 +6,7 @@ import traceback
 
 import requests
 from bs4 import BeautifulSoup
+from twilio.rest import Client
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,9 +25,9 @@ headers = {
 }
 
 proxies = {
-        'http': 'http://127.0.0.1:1080',
-        'https': 'http://127.0.0.1:1080',
-    }
+    'http': 'http://127.0.0.1:1080',
+    'https': 'http://127.0.0.1:1080',
+}
 
 
 def get_post_urls():
@@ -49,6 +50,7 @@ def get_post_urls():
     except:
         logger.info('发生未知异常：' + traceback.format_exc())
         return post_urls
+
 
 def get_codes(post_url):
     codes = []
@@ -73,6 +75,33 @@ def get_codes(post_url):
         return codes
 
 
+def send_sms(content):
+    twilio_number = ''
+    account_sid = ''
+    auth_token = ''
+    receiver_number = ''
+    prop_file = open('../config.properties')
+    for line in prop_file.readlines():
+        if line.strip().startswith('#'):
+            continue
+        tmps = line.split('=')
+        if tmps[0].strip() == 'twilio_number':
+            twilio_number = tmps[1].strip()
+        if tmps[0].strip() == 'account_sid':
+            account_sid = tmps[1].strip()
+        if tmps[0].strip() == 'auth_token':
+            auth_token = tmps[1].strip()
+        if tmps[0].strip() == 'receiver_number':
+            receiver_number = tmps[1].strip()
+    client = Client(account_sid, auth_token)
+    message = client.messages.create(
+        body=content,
+        from_=twilio_number,
+        to=receiver_number
+    )
+    print(message.status)
+
+
 def main():
     while True:
         try:
@@ -87,6 +116,8 @@ def main():
                     print('当前帖子无邀请码')
                 for code in codes:
                     print(code)
+                content = '\n'.join(codes)
+                send_sms(content)
                 print()
                 time.sleep(3)
             time.sleep(60)
